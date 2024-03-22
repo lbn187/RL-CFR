@@ -554,50 +554,6 @@ ACTION AI_turn_with_hand(int hand_id,string AI_name,PBS &pbs,vector<vector<doubl
     return selected_action;
 }
 /*
-vector<Card> get_next_cards(string OPPO_name,int stage,double totalv,double callv,double maxraise,vector<Card>publib_cards,vector<vector<double>>events){
-    return {};
-}
-double ai_play_with_oppo(int ai_player,string AI_name,string OPPO_name,int play_time){//0 AI oop OPPO ip  2 AI op OPPO oop   return ai profit
-    pre_setting(thread_id);
-    double profit=0.0;
-    for(int it=0;it<play_time;it++){
-        double maxv=1.0;
-        int ai_hand_id=rand()%HANDS_NUMBER;
-        vector<Card>player_cards={Card(index1[ai_hand_id]),Card(index2[ai_hand_id])};
-        vector<vector<double>>policy;
-        vector<ACTION>actions;
-        PBS pbs;
-        pbs.reset(100);//100 BIG BLINDS
-        vector<Card>next_cards;
-        vector<vector<double>>events;
-        events.clear();events.push_back({});
-        while(type>=2&&stage<=3){
-            if(type==2){
-                next_cards=get_next_cards(OPPO_name,stage,totalv,callv,maxraise,public_cards,events);
-                specific_next_cards(next_cards,public_cards,oop_prob,ip_prob);//TODO
-                type=3;
-                action_player=0;
-                events.push_back({});
-                continue;
-            }
-            vector<float>state=vector_event_to_state(stage,action_player,totalv,callv, maxraise,public_cards,events);
-            if(type==3){
-                if(action_player==ai_player)AI_turn_with_hand(ai_hand_id,AI_name,type,stage,action_player,totalv,callv,maxraise,oop_prob,ip_prob,public_cards,events,actions,policy);
-                else{
-                    ACTION oppo_action=get_action_from_oppo(OPPO_name,stage,action_player,totalv,callv,maxraise,public_cards,events);
-                    opponent_action_and_update_pbs(oppo_action,AI_name,type,stage,action_player,totalv,callv,maxraise,oop_prob,ip_prob,public_cards,events,ai_hand_id);
-                }
-            }
-        }
-        if(type==0){
-            if(ai_player==action_player)profit+=totalv/2;else profit+=-totalv/2;
-        }else if(type==1){
-            //TODO
-        }else cerr<<"TYPE ERROR"<<endl;
-    }
-    return profit;
-}*/
-/*
 void exploitability_test(string AI_name, string EXPLO_name, int play_time,int thread_id){
     pre_setting(thread_id);
     double AI_explo_value=0.0,OPPO_explo_value=0.0;

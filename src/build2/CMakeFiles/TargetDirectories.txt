@@ -1,3 +1,0 @@
-/home/liboning/rlhunl/src/build/CMakeFiles/rebuild_cache.dir
-/home/liboning/rlhunl/src/build/CMakeFiles/edit_cache.dir
-/home/liboning/rlhunl/src/build/CMakeFiles/CFR.dir
