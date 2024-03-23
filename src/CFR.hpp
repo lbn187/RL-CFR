@@ -101,7 +101,7 @@ double compare(int myhand,int oppohand,vector<Card>die_cards){
     if(rk1==rk2)return 0.0;
     return -1.0;
 }
-//0 BASIC with noise 1 BASIC     2   RL ACTION      3 ALL RL ACTION
+//0 BASIC with noise 1 BASIC     2   RL ACTION      3 ALL RL ACTION   4 root DEFAULT else actions
 double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vector<Card>public_cards,double BIG_BLINDS,vector<double>&oop_prob,vector<double>&ip_prob,int oop_action_abstraction,int ip_action_abstraction,vector<ACTION>&final_actions,vector<vector<double>>&total_policy){
     PS ps;
     ps.reset(BIG_BLINDS,public_cards);
@@ -129,6 +129,15 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
                     if(h==root_id){
                         for(double scale:root_actions)
                             if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+potv*((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                    }else{
+                        vector<double>raise_actions=get_target_action(node.ps.ps_vector());
+                        for(double scale:raise_actions)
+                            if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+potv*((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                    }
+                }else if(lx==4){
+                    if(h==root_id){
+                        for(double scale:DEFAULT_SCALE)
+                            if(potv*scale<maxraise)actions.push_back(ACTION(2,potv*scale));
                     }else{
                         vector<double>raise_actions=get_target_action(node.ps.ps_vector());
                         for(double scale:raise_actions)
@@ -295,9 +304,8 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
             for(int i=0;i<hand_cnt;i++)
                 if(tree[root_id].ps.player==0)prob+=average_policy[node][i]*oop_prob[handid[i]];
                 else prob+=average_policy[node][i]*ip_prob[handid[i]];
-            if(tree[node].ps.type==PLAYER_PUBLIC_STATE){
-                probs.push_back(prob),sum_prob+=prob,ton.push_back(node);
-            }
+            probs.push_back(prob);
+            sum_prob+=prob,ton.push_back(node);
         }
         int nxt_id;
         if(rand()%4==0||sum_prob<EPS){
@@ -373,11 +381,11 @@ void train_with_action(double big_blinds,bool trust_action){
             root_actions=get_action(ps.ps_vector(),ACTION_NOISE);
             double base_value,action_value;
             if(rand()%3>0){
-                base_value=call_value(1,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,actions,policy);
+                base_value=call_value(trust_action?4:1,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,actions,policy);
                 action_value=call_value(trust_action?3:2,1,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,actions,policy);
             }else{
                 action_value=call_value(trust_action?3:2,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,actions,policy);
-                base_value=call_value(1,1,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,actions,policy);
+                base_value=call_value(trust_action?4:1,1,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,actions,policy);
             }
             add_sav_data(ps.ps_vector(),choose_actions,base_value,action_value);
             ps.trans(history_actions.back());
@@ -402,7 +410,7 @@ void pre_setting(int thread_id){
 void training_with_action(string action_data_dir,int epoch,int thread_id,int sample_number,int trust_action=0){
     pre_setting(thread_id);
     for(int i=0;i<sample_number;i++)
-        train_with_action(randvalue(5.0,150.0),trust_action);
+        train_with_action(randvalue(10.0,100.0),trust_action);
     string dir=action_data_dir+"rlstate"+to_string(epoch)+"_"+to_string(THREAD_ID)+".csv";
     FILE* fp=freopen(dir.c_str(),"w",stdout);
     write_data(rl_state_data);

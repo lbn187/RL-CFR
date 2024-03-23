@@ -32,20 +32,13 @@ parser.add_argument('--learn_time',type=int,default=15000)
 parser.add_argument('--action_dim',type=int,default=12)
 parser.add_argument('--state_dim',type=int,default=32)
 parser.add_argument('--epoch',type=int,default=500)
-parser.add_argument('--first_train',type=bool,default=True)
 args = parser.parse_args()
-agent = TD3(lr_actor=0.00003, lr_critic=0.00001, state_dim=args.state_dim,
+agent = TD3(lr_actor=0.00001, lr_critic=0.00001, state_dim=args.state_dim,
             action_dim=args.action_dim, actor_fc1_dim=128, actor_fc2_dim=96,
             critic_fc1_dim=128, critic_fc2_dim=96, learn_time=args.learn_time, ckpt_dir=args.ckpt_dir, gamma=0.99,
             tau=0.005, action_noise=0.15, policy_noise=0.2, policy_noise_clip=0.5,
             delay_time=2, max_size=20000000, batch_size=1024)
 
-if args.first_train:
-    model = agent.target_actor.to(device)
-    model.eval()
-    example=torch.rand(1,args.state_dim).to(device)
-    traced_script_module = torch.jit.trace(model, example)
-    traced_script_module.save("../model/actor.pt")
 
 actor_loss_history = []
 critic_loss_history = []
@@ -70,11 +63,11 @@ def main():
         torch.jit.save(traced_script_module2,"../model/critic.pt")
 
         threads = []
-        rl_abstracion = 0
+        rl_abstraction = 0
         if epoch > args.epoch // 2:
             rl_abstraction = 1
         for i in range(args.threads):
-            threads.append(Process(target=script, args=(epoch,i,args.data_train_time,rl_abstraction)))
+            threads.append(Process(target=script, args=(epoch,i,args.data_train_time,rl_abstraction,)))
             threads[i].start()
 
         for i in range(args.threads):
