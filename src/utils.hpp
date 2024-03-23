@@ -20,12 +20,11 @@ const int DIFF_PUBS=6591;
 const int ITERATOR_NUMBER=20000;
 const int CUDA_NUMBER=6;
 const int WARM_ITERATOR=0;//TODO
-const int VALUE_WARM_ITERATOR=16;//TODO
+const int VALUE_WARM_ITERATOR=20;//TODO
 const double EPS=1e-20;
 const double BIG_BLIND_V=0.01;
-const double DEFAULT_BIG_BLINDS=200;
-const int ACTION_DIM=3;
-const double ACTION_NOISE=0.00;//TRAINING
+const double DEFAULT_BIG_BLINDS=50;
+const double ACTION_NOISE=0.15;//TRAINING
 
 //const double TOTAL_V=10000;
 bool INDEX_TO_CARD_FLAG=false;
@@ -56,8 +55,8 @@ const int ROUND_INDEX=10000;
 const vector<double>DEFAULT_SCALE={0.5,1.0,2.0,4.0,8.0,15.0};
 const vector<double>DEFAULT_RAISING={0.25,0.5,0.75,1.0,1.5,2.0};
 const vector<double>OPPONENT_SCALE={0.25,0.5,1.0,2.0};
-const string critic_dir="../new_model/";//NEW
-const string action_data_dir="../data/action_data/";
+const string critic_dir="../model/";//NEW
+const string action_data_dir="../data/";
 const bool USE_PBS_ASSUMPTION=true;
 const double BAD_ACTION_EPSON=0.01;
 const int LIMIT_LOOK_AHEAD_STEP=3;
@@ -93,6 +92,7 @@ int index1[HANDS_NUMBER];
 int index2[HANDS_NUMBER];
 int to_index[CARD_NUMBER][CARD_NUMBER];
 int start_id[HANDS_NUMBER];
+int compare_ans[INFOSET_NUMBER][INFOSET_NUMBER];
 struct buffer_info{
     void *ptr;
     ssize_t itemsize;

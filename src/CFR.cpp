@@ -1,4 +1,4 @@
-#include"solver.hpp"
+#include"CFR.hpp"
 /*
 int main(int argc, char*argv[]){//vs Slumbot
     srand(time(0));
@@ -8,11 +8,11 @@ int main(int argc, char*argv[]){//vs Slumbot
 int main(){
     see_PBS();
 }*/
-/*
+
 int main(int argc, char*argv[]){//training
     srand(time(0));
-    REBEL_training_type("../data/"+to_string(atoi(argv[1]))+"/",atoi(argv[2]),atoi(argv[3]),atoi(argv[4]),atoi(argv[5]));
-}*/
+    training_with_action("../data/",atoi(argv[1]),atoi(argv[2]),atoi(argv[3]),atoi(argv[4]));
+}
 
 /*
 int main(int argc, char*argv[]){//explo
@@ -24,10 +24,7 @@ int main(int argc, char*argv[]){
     srand(time(0));
     ai_play_with_human("ACTIONRL2",atoi(argv[1]));
 }*/
-int main(int argc, char*argv[]){
-    srand(time(0));
-    solve({},{},0);
-}
+
 /*
 int main(int argc, char*argv[]){//AI_vs_AI
     srand(time(0));

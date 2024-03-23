@@ -53,24 +53,24 @@ struct PS{
             type=PLAYER_PUBLIC_STATE;
         }else if(a.type==ACTION_TYPE_CALL){
             events[stage].push_back(0.0);
-            if((stage==PREFLOP_STAGE&&totalv>BIG_BLIND_V*1.7)||(stage!=PREFLOP_STAGE&&player==IP_PLAYER)||(stage!=PREFLOP_STAGE&&callv>EPS)||(callv<EPS&&maxraise<EPS)){//L7
-                if(stage==RIVER_STAGE)type=SHOWDOWN_PUBLIC_STATE;else type=CHANCE_PUBLIC_STATE;
+            if(totalv>BIG_BLIND_V*1.7){//L7
+                type=SHOWDOWN_PUBLIC_STATE;
             }else{
                 type=PLAYER_PUBLIC_STATE;
             }//R7
-            if(maxraise<EPS&&type!=SHOWDOWN_PUBLIC_STATE&&type!=CHANCE_PUBLIC_STATE)type=ALLIN_PUBLIC_STATE;
             totalv+=callv;
             callv=0.0;
         }else if(a.type==ACTION_TYPE_CHANCE){
             for(Card cd:a.cd)public_cards.push_back(cd);
         }
+        player=1-player;
         history_actions.push_back(a);
     }
-    void reset(double BIG_BLINDS,vector<double>cds){
+    void reset(double BIG_BLINDS,vector<Card>cds){
         public_cards.clear();
         totalv=BIG_BLIND_V*1.5;
         callv=BIG_BLIND_V*0.5;
-        maxraise=ROUND(BIG_BLIND_V*(BIG_BLINDS-1),ROUND_INDEX);
+        maxraise=BIG_BLIND_V*(BIG_BLINDS-1);
         stage=PREFLOP_STAGE;
         player=IP_PLAYER;
         type=PLAYER_PUBLIC_STATE;

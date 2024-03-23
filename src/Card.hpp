@@ -184,7 +184,20 @@ int get_rank_from_cards(vector<Card>cards){
             for(int c=b+1;c<N;c++)
                 for(int d=c+1;d<N;d++)
                     for(int e=d+1;e<N;e++)
-                        rk=min(rk,get_rank(cards[a],cards[b],cards[c],cards[d],cards[e]));
+                        rk=min(rk,get_rank(vector<Card>{cards[a],cards[b],cards[c],cards[d],cards[e]}));
     return rk;
+}
+void get_hand_id(){
+    int num=0;
+    for(int id1=1;id1<CARD_NUMBER;id1++){
+        for(int id2=0;id2<id1;id2++){
+            index1[num]=id1;
+            index2[num]=id2;
+            to_index[id1][id2]=to_index[id2][id1]=num;
+            Card cd1=Card(id1),cd2=Card(id2);
+            start_id[num]=(cd2.suit()!=cd1.suit()?cd2.number()*13+cd1.number():cd1.number()*13+cd2.number());
+            ++num;
+        }
+    }
 }
 #endif

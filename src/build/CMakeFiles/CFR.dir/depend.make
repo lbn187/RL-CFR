@@ -3,12 +3,10 @@
 
 CMakeFiles/CFR.dir/CFR.cpp.o: ../ACTION.hpp
 CMakeFiles/CFR.dir/CFR.cpp.o: ../CFR.cpp
+CMakeFiles/CFR.dir/CFR.cpp.o: ../CFR.hpp
 CMakeFiles/CFR.dir/CFR.cpp.o: ../Card.hpp
-CMakeFiles/CFR.dir/CFR.cpp.o: ../Infoset.hpp
-CMakeFiles/CFR.dir/CFR.cpp.o: ../PBS.hpp
 CMakeFiles/CFR.dir/CFR.cpp.o: ../PS.hpp
 CMakeFiles/CFR.dir/CFR.cpp.o: ../TreeNode.hpp
-CMakeFiles/CFR.dir/CFR.cpp.o: ../solver.hpp
 CMakeFiles/CFR.dir/CFR.cpp.o: ../utils.hpp
 CMakeFiles/CFR.dir/CFR.cpp.o: /home/liboning/anaconda3/include/builtin_types.h
 CMakeFiles/CFR.dir/CFR.cpp.o: /home/liboning/anaconda3/include/crt/host_defines.h

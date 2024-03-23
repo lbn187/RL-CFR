@@ -9,7 +9,7 @@ find_package(OpenSSL REQUIRED)
 find_package(Boost COMPONENTS serialization filesystem property_tree)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
-add_executable(CFR CFR.cpp solver.hpp)
+add_executable(CFR CFR.cpp CFR.hpp)
 target_link_libraries(CFR "${TORCH_LIBRARIES}")
 target_link_libraries(CFR OpenSSL::SSL)
 target_link_libraries(CFR OpenSSL::Crypto)

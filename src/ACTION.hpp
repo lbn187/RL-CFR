@@ -36,7 +36,7 @@ struct ACTION{
     ACTION &operator=(const ACTION &_action){
         if(&_action==this)return *this;
         type=_action.type;
-        raise_v=ROUND(_action.raise_v,ROUND_INDEX);
+        raise_v=_action.raise_v;
         cd=_action.cd;
         return *this;
     }
