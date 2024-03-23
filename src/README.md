@@ -1,1 +1,0 @@
-cmake -DCMAKE_PREFIX_PATH=/home/liboning/anaconda3/lib/python3.9/site-packages/torch ..

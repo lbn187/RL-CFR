@@ -13,35 +13,20 @@
 #include<ATen/ATen.h>
 #include <cuda_runtime_api.h>
 #define floord(n,d) floor(((double)(n))/((double)(d)))
-//#include<pybind11/embed.h>
-//#include<pybind11/pybind11.h>
-//#include<pybind11/numpy.h>
-//#include <pybind11/stl.h>
-//namespace py=pybind11;
-//torch::jit::script::Module module[6];
 torch::jit::script::Module actor_module;
-//torch::jit::script::Module critic_module;
 vector<vector<float>>rl_state_data,rl_action_data;
 vector<float>rl_value_data;
 vector<float>choose_actions;
 vector<double>root_actions;
 int gpu_id;
-//bool SEE_ACTION_FLAG=false;
 normal_distribution<float>distribution(0.0,ACTION_NOISE);
 vector<double> get_action(vector<float>state,double noise=0.0){
-    //if(maxraise<EPS)return {};
     default_random_engine generator{(unsigned int)time(0)};
-    //normal_distribution<float>distribution(0.0,noise);
     vector<float>state2=state;
     torch::DeviceType device=at::kCUDA;
     torch::Tensor state_tensor=at::from_blob(state.data(),{1,EVENT_DIM},at::TensorOptions().dtype(at::kFloat));
     std::vector<torch::jit::IValue>inputs;
     inputs.push_back(state_tensor.to(device));
-    /*try{
-        actor_module.to(device);
-    }catch(const c10::Error& e){
-        cerr<<"ACTOR MODULE TO ERROR"<<endl;
-    }*/
     at::Tensor output;
     try{
         output=actor_module.forward(inputs).toTensor().to(at::kCPU);
@@ -64,19 +49,12 @@ vector<double> get_action(vector<float>state,double noise=0.0){
     return actions;
 }
 vector<double> get_target_action(vector<float>state,double noise=0.0){
-    //TODO
-    //if(maxraise<EPS)return {};
     default_random_engine generator;
     normal_distribution<float>distribution(0.0,noise);
     torch::DeviceType device=at::kCUDA;
     torch::Tensor state_tensor=at::from_blob(state.data(),{1,EVENT_DIM},at::TensorOptions().dtype(at::kFloat));
     std::vector<torch::jit::IValue>inputs;
     inputs.push_back(state_tensor.to(device));
-    /*try{
-        actor_module.to(device);
-    }catch(const c10::Error& e){
-        cerr<<"ACTOR MODULE TO ERROR3"<<endl;
-    }*/
     at::Tensor output;
     try{
         output=actor_module.forward(inputs).toTensor().to(at::kCPU);
@@ -123,21 +101,9 @@ double compare(int myhand,int oppohand,vector<Card>die_cards){
     if(rk1==rk2)return 0.0;
     return -1.0;
 }
-//lx 0-BASIC ACTION WITH NOISE 1-BASIC ACTION 2-RL ACTION 3-ALL RL ACTION
-//update_next_flag 0-no update 1-update and save data 2-normal update 3-action step update 4-average policy update
-double call_value(int lx,//0 BASIC with noise 1 BASIC     2   RL ACTION      3 ALL RL ACTION
-int update_next_flag,
-vector<ACTION>&history_actions,
-vector<Card>public_cards,
-double BIG_BLINDS,
-vector<double>&oop_prob,
-vector<double>&ip_prob,
-int oop_action_abstraction,
-int ip_action_abstraction,
-vector<ACTION>&final_actions,vector<vector<double>>&total_policy){
-    //PBS pbs;
+//0 BASIC with noise 1 BASIC     2   RL ACTION      3 ALL RL ACTION
+double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vector<Card>public_cards,double BIG_BLINDS,vector<double>&oop_prob,vector<double>&ip_prob,int oop_action_abstraction,int ip_action_abstraction,vector<ACTION>&final_actions,vector<vector<double>>&total_policy){
     PS ps;
-    //pbs.reset(BIG_BLINDS,public_cards);
     ps.reset(BIG_BLINDS,public_cards);
     vector<TreeNode>tree;
     int h=0,t=1,haite=0,r_id=0,root_id=-1;
@@ -214,16 +180,13 @@ vector<ACTION>&final_actions,vector<vector<double>>&total_policy){
     int TREE_SZ=t;
     if(TREE_SZ>=MAX_TREE_SZ)cerr<<"TREE SIZE BLOOM"<<endl;
     static double hand_prob[2][MAX_TREE_SZ][INFOSET_NUMBER],hand_value[2][MAX_TREE_SZ][INFOSET_NUMBER],regret_plus[MAX_TREE_SZ][INFOSET_NUMBER],policy[MAX_TREE_SZ][INFOSET_NUMBER],regret_plus_sum[MAX_TREE_SZ][INFOSET_NUMBER];
-    static double oop_sum[MAX_TREE_SZ], ip_sum[MAX_TREE_SZ];
-    static double average_hand_prob[2][MAX_TREE_SZ][INFOSET_NUMBER],average_policy[MAX_TREE_SZ][INFOSET_NUMBER],card_prob[2][CARD_NUMBER],average_value[2][MAX_TREE_SZ][INFOSET_NUMBER];
+    static double average_hand_prob[2][MAX_TREE_SZ][INFOSET_NUMBER],average_policy[MAX_TREE_SZ][INFOSET_NUMBER],average_value[2][MAX_TREE_SZ][INFOSET_NUMBER];
     static int cardid[CARD_NUMBER],handid[INFOSET_NUMBER];
-
     for(int i=0;i<CARD_NUMBER;i++)VV[i]=false;
     for(Card cd:ps.public_cards)VV[cd.index]=true;
     for(int i=0;i<CARD_NUMBER;i++)if(!VV[i])cardid[card_cnt]++;
     for(int i=0;i<HANDS_NUMBER;i++)if(VV[index1[i]]||VV[index2[i]])FLAG[i]=false;else FLAG[i]=true,handid[hand_cnt++]=i;
     for(int i=0;i<hand_cnt;i++)hand_prob[0][0][i]=hand_prob[1][0][i]=average_hand_prob[0][0][i]=average_hand_prob[1][0][i]=1.0/hand_cnt;
-
     for(int node=0;node<TREE_SZ;node++)
         for(int i=0;i<hand_cnt;i++){
             regret_plus_sum[node][i]=0.0;
@@ -404,9 +367,6 @@ void train_with_action(double big_blinds,bool trust_action){
         for(int j=0;j<(int)hand_id.size();j++)
             compare_ans[i][j]=compare(hand_id[i],hand_id[j],public_cards);
     while(ps.type==3){
-        //printf("---  %.12lf %.12lf %.12lf  %d\n",ps.totalv,ps.callv,ps.maxraise,ps.player);
-        //for(int i=0;i<HANDS_NUMBER;i++)if(FLAG[i])printf("%.4lf ",oop_prob[i]);puts("");
-        //for(int i=0;i<HANDS_NUMBER;i++)if(FLAG[i])printf("%.4lf ",ip_prob[i]);puts("");
         if(ps.maxraise<EPS)break;
         if(ps.type==3){
             choose_actions.clear();
@@ -419,7 +379,6 @@ void train_with_action(double big_blinds,bool trust_action){
                 action_value=call_value(trust_action?3:2,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,actions,policy);
                 base_value=call_value(1,1,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,actions,policy);
             }
-            //printf("%d %.5lf %.5lf %.5lf %.12lf %.12lf\n",ps.player,ps.totalv,ps.callv,ps.maxraise,base_value,action_value);
             add_sav_data(ps.ps_vector(),choose_actions,base_value,action_value);
             ps.trans(history_actions.back());
         }
@@ -438,21 +397,12 @@ void pre_setting(int thread_id){
     catch(const c10::Error& e){
         cerr<<"ACTOR  MODULE LOAD ERROR"<<endl;
     }
-    /*string crit_dir=critic_dir+"critic.pt";
-    try{
-        critic_module=torch::jit::load(crit_dir,torch::Device(torch::DeviceType::CUDA,gpu_id));
-        critic_module.to(device);
-    }
-    catch(const c10::Error& e){
-        cerr<<"CRITIC MODULE LOAD ERROR"<<endl;
-    }*/
     srand(time(0)+thread_id*3333);
 }
 void training_with_action(string action_data_dir,int epoch,int thread_id,int sample_number,int trust_action=0){
     pre_setting(thread_id);
-    for(int i=0;i<sample_number;i++){
+    for(int i=0;i<sample_number;i++)
         train_with_action(randvalue(5.0,150.0),trust_action);
-    }
     string dir=action_data_dir+"rlstate"+to_string(epoch)+"_"+to_string(THREAD_ID)+".csv";
     FILE* fp=freopen(dir.c_str(),"w",stdout);
     write_data(rl_state_data);
