@@ -22,22 +22,16 @@ int gpu_id;
 normal_distribution<float>distribution(0.0,ACTION_NOISE);
 vector<double> get_action(vector<float>state,double noise=0.0){
     default_random_engine generator{(unsigned int)time(0)};
-    vector<float>state2=state;
     torch::DeviceType device=at::kCUDA;
     torch::Tensor state_tensor=at::from_blob(state.data(),{1,EVENT_DIM},at::TensorOptions().dtype(at::kFloat));
     std::vector<torch::jit::IValue>inputs;
     inputs.push_back(state_tensor.to(device));
     at::Tensor output;
-    try{
-        output=actor_module.forward(inputs).toTensor().to(at::kCPU);
-    }catch(const c10::Error& e){
-        cerr<<"ACTOR NETWORK FORWARD ERROR"<<endl;
-    }
+    output=actor_module.forward(inputs).toTensor().to(at::kCPU);
     vector<float> v(output.data_ptr<float>(),output.data_ptr<float>()+output.numel());
     vector<double>actions;
-    for(int i=0;i<6;i++){
-        float x,y;//=v[i*2],y=v[i*2+1];
-        x=v[i*2],y=v[i*2+1];
+    for(int i=0;i<ACTION_DIM;i++){
+        float x=v[i*2],y=v[i*2+1];
         if(noise>0.000001)x=x+distribution(generator),y=y+distribution(generator);
         x=min(max(x,(float)-1.0),(float)1.0);
         y=min(max(y,(float)-1.0),(float)1.0);
@@ -56,16 +50,11 @@ vector<double> get_target_action(vector<float>state,double noise=0.0){
     std::vector<torch::jit::IValue>inputs;
     inputs.push_back(state_tensor.to(device));
     at::Tensor output;
-    try{
-        output=actor_module.forward(inputs).toTensor().to(at::kCPU);
-    }catch(const c10::Error& e){
-        cerr<<"ACTOR NETWORK FORWARD ERROR"<<endl;
-    }
+    output=actor_module.forward(inputs).toTensor().to(at::kCPU);
     vector<float> v(output.data_ptr<float>(),output.data_ptr<float>()+output.numel());
     vector<double>actions;
-    for(int i=0;i<6;i++){
-        float x,y;//=v[i*2],y=v[i*2+1];
-        x=v[i*2],y=v[i*2+1];
+    for(int i=0;i<ACTION_DIM;i++){
+        float x=v[i*2],y=v[i*2+1];
         if(noise>0.000001)x=x+distribution(generator),y=y+distribution(generator);
         x=min(max(x,(float)-1.0),(float)1.0);
         y=min(max(y,(float)-1.0),(float)1.0);
@@ -73,10 +62,6 @@ vector<double> get_target_action(vector<float>state,double noise=0.0){
         actions.push_back(x);
     }
     return actions;
-}
-PS get_ps_from_root(PS ps,vector<ACTION>actions){
-    for(ACTION a:actions)ps.trans(a);
-    return ps;
 }
 double compare(int myhand,int oppohand,vector<Card>die_cards){
     Card cd1(index1[myhand]),cd2(index2[myhand]),cd3(index1[oppohand]),cd4(index2[oppohand]);
@@ -102,7 +87,10 @@ double compare(int myhand,int oppohand,vector<Card>die_cards){
     return -1.0;
 }
 //0 BASIC with noise 1 BASIC     2   RL ACTION      3 ALL RL ACTION   4 root DEFAULT else actions
-double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vector<Card>public_cards,double BIG_BLINDS,vector<double>&oop_prob,vector<double>&ip_prob,int oop_action_abstraction,int ip_action_abstraction,vector<ACTION>&final_actions,vector<vector<double>>&total_policy){
+double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vector<Card>public_cards,double BIG_BLINDS,vector<double>&oop_prob,vector<double>&ip_prob,int oop_action_abstraction,int ip_action_abstraction
+,int root_hand_id=-1
+//,vector<ACTION>&final_actions,vector<vector<double>>&total_policy
+){
     PS ps;
     ps.reset(BIG_BLINDS,public_cards);
     vector<TreeNode>tree;
@@ -120,7 +108,7 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
                 if(lx==2){
                     if(h==root_id){
                         for(double scale:root_actions)
-                            if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+potv*((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                            if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
                     }else{
                          for(double scale:DEFAULT_SCALE)
                             if(potv*scale<maxraise)actions.push_back(ACTION(2,potv*scale));
@@ -128,11 +116,11 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
                 }else if(lx==3){
                     if(h==root_id){
                         for(double scale:root_actions)
-                            if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+potv*((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                            if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
                     }else{
                         vector<double>raise_actions=get_target_action(node.ps.ps_vector());
                         for(double scale:raise_actions)
-                            if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+potv*((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                            if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
                     }
                 }else if(lx==4){
                     if(h==root_id){
@@ -141,7 +129,7 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
                     }else{
                         vector<double>raise_actions=get_target_action(node.ps.ps_vector());
                         for(double scale:raise_actions)
-                            if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+potv*((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                            if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
                     }
                 }else if(lx==1){
                     if(node.ps.player==OOP_PLAYER){
@@ -151,7 +139,7 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
                         }else{
                             vector<double>raise_actions=get_target_action(node.ps.ps_vector());
                             for(double scale:raise_actions)
-                                if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+potv*((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                                if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
                         }
                     }else{
                         if(ip_action_abstraction==0){
@@ -160,7 +148,7 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
                         }else{
                             vector<double>raise_actions=get_target_action(node.ps.ps_vector());
                             for(double scale:raise_actions)
-                                if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+potv*((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                                if(potv*0.5<maxraise)actions.push_back(ACTION(2,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
                         }
                     }
                 }
@@ -170,7 +158,6 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
                     if(haite==(int)history_actions.size())root_id=r_id;
                 }
             }
-            if(h==root_id)final_actions=actions;
             tree[h].child_begin=t;
             for(ACTION a:actions){
                 PS ps=tree[h].ps;
@@ -282,7 +269,6 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
                 for(int i=0;i<hand_cnt;i++)
                     updatev(average_policy[node][i],policy[node][i],2.0/(T-VALUE_WARM_ITERATOR+2));
         }
-
     }//R4
     for(int node=1;node<TREE_SZ;node++){
         int player=1-tree[node].ps.player;
@@ -296,7 +282,15 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
         if(tree[root_id].ps.player==0)value+=average_value[0][root_id][i]*oop_prob[handid[i]];
         else value+=average_value[1][root_id][i]*ip_prob[handid[i]];
     }
-    if(update_next_flag){
+    if(update_next_flag==100){
+        if(root_hand_id==-1)cerr<<"HAND ID UNDEFINE ERROR"<<endl;
+        double x=randvalue(0.0,1.0),y=0.0;
+        int nxt_id=tree[root_id].child_end;
+        for(int node=tree[root_id].child_begin;node<=tree[root_id].child_end;node++){
+            
+        }
+    }
+    if(update_next_flag>0){
         vector<double>probs;double sum_prob=0.0;vector<int>ton;
         int act_num=tree[root_id].child_end-tree[root_id].child_begin+1;
         for(int node=tree[root_id].child_begin;node<=tree[root_id].child_end;node++){
@@ -313,9 +307,12 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
         }else{
             double x=randvalue(0.0,sum_prob),y=0.0;
             nxt_id=tree[root_id].child_end;
-            for(int i=0;i<(int)probs.size();i++)if(y+probs[i]>x){
-                nxt_id=ton[i];
-                break;
+            for(int i=0;i<(int)probs.size();i++){
+                y+=probs[i];
+                if(y>x){
+                    nxt_id=ton[i];
+                    break;
+                }
             }
         }
         ACTION a=tree[nxt_id].final_action;
@@ -328,6 +325,66 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
         if(!normalization(oop_prob))oop_prob=pre_oop_prob;
         if(!normalization(ip_prob))ip_prob=pre_ip_prob;
     }
+    if(update_next_flag<0){//explo test
+        static int best_child[MAX_TREE_SZ][INFOSET_NUMBER];
+        int explo_player=1-tree[root_id].ps.player;
+
+        
+        for(int node=0;node<TREE_SZ;node++){
+            for(int i=0;i<INFOSET_NUMBER;i++){
+                hand_value[0][node][i]=hand_value[1][node][i]=0;
+                if(tree[node].ps.player==explo_player){
+                    best_child[node][i]=-1;
+                }
+            }
+            if(tree[node].ps.type==FOLD_PUBLIC_STATE){//L6
+                int pl=explo_player;
+                    vector<double>sum_prob(CARD_NUMBER,.0);
+                    double all_sum_prob=.0;
+                    for(int i=0;i<hand_cnt;i++){
+                        double other_prob=0.0;
+                        int i1=index1[handid[i]],i2=index2[handid[i]];
+                        double x=average_hand_prob[1-pl][node][i];
+                        sum_prob[i1]+=x;
+                        sum_prob[i2]+=x;
+                        all_sum_prob+=x;
+                    }
+                    for(int i=0;i<hand_cnt;i++){
+                        int i1=index1[handid[i]],i2=index2[handid[i]];
+                        double other_prob=all_sum_prob-sum_prob[i1]-sum_prob[i2]+average_hand_prob[1-pl][node][i];
+                        if(pl==tree[node].ps.player)hand_value[pl][node][i]=tree[node].ps.totalv/2*other_prob;
+                        else hand_value[pl][node][i]=-tree[node].ps.totalv/2*other_prob;
+                    }
+            }//R6
+            if(tree[node].ps.type==SHOWDOWN_PUBLIC_STATE){
+                int pl=explo_player;
+                    for(int i=0;i<hand_cnt;i++){
+                        int i1=index1[handid[i]],i2=index2[handid[i]];
+                        hand_value[pl][node][i]=0.0;
+                        for(int j=0;j<hand_cnt;j++){
+                            int j1=index1[handid[j]],j2=index2[handid[j]];
+                            if(i1!=j1&&i1!=j2&&i2!=j1&&i2!=j2){
+                                hand_value[pl][node][i]+=tree[node].ps.totalv/2*compare_ans[i][j]*average_hand_prob[1-pl][node][j];
+                            }
+                        }
+                    }
+            }
+        }
+        for(int node=TREE_SZ-1;node;node--){
+            for(int i=0;i<INFOSET_NUMBER;i++)if(1-tree[node].ps.player==explo_player){
+                if(hand_value[explo_player][node][i]>hand_value[explo_player][tree[node].fa][i]||best_child[tree[node].fa][i]==-1){
+                    best_child[tree[node].fa][i]=node;
+                    hand_value[explo_player][tree[node].fa][i]=hand_value[explo_player][node][i];
+                }
+            }else hand_value[explo_player][tree[node].fa][i]+=hand_value[explo_player][node][i];
+        }
+        double value_oppo=0.0;
+        for(int i=0;i<hand_cnt;i++){
+            if(explo_player==0)value_oppo+=hand_value[0][root_id][i]*oop_prob[handid[i]];
+            else value_oppo+=hand_value[1][root_id][i]*ip_prob[handid[i]];
+        }
+        return value_oppo+value;
+    }
     return value;
 }
 void add_sav_data(vector<float>state,vector<float>choose_actions,double base_value,double action_value){
@@ -337,8 +394,6 @@ void add_sav_data(vector<float>state,vector<float>choose_actions,double base_val
 }
 void train_with_action(double big_blinds,bool trust_action){
     get_hand_id();
-    vector<vector<double>>policy;
-    vector<ACTION>actions;
     PS ps;
     vector<Card>public_cards;
     for(int i=0;i<43;i++){
@@ -381,11 +436,11 @@ void train_with_action(double big_blinds,bool trust_action){
             root_actions=get_action(ps.ps_vector(),ACTION_NOISE);
             double base_value,action_value;
             if(rand()%3>0){
-                base_value=call_value(trust_action?4:1,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,actions,policy);
-                action_value=call_value(trust_action?3:2,1,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,actions,policy);
+                base_value=call_value(trust_action?4:1,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0);
+                action_value=call_value(trust_action?3:2,1,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0);
             }else{
-                action_value=call_value(trust_action?3:2,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,actions,policy);
-                base_value=call_value(trust_action?4:1,1,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,actions,policy);
+                action_value=call_value(trust_action?3:2,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0);
+                base_value=call_value(trust_action?4:1,1,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0);
             }
             add_sav_data(ps.ps_vector(),choose_actions,base_value,action_value);
             ps.trans(history_actions.back());
@@ -428,5 +483,143 @@ void training_with_action(string action_data_dir,int epoch,int thread_id,int sam
     fflush(fp);
     freopen("/dev/tty","w",stdout);
     freopen("/dev/tty","r",stdin);
+}
+double get_value(double big_blinds){
+    get_hand_id();
+    PS ps;
+    vector<Card>public_cards;
+    for(int i=0;i<43;i++){
+        while(true){
+            int x=rand()%CARD_NUMBER;
+            Card cd(x);
+            bool flag=true;
+            for(Card p:public_cards)if(cd==p){
+                flag=false;
+                break;
+            }
+            if(flag){
+                public_cards.push_back(cd);
+                break;
+            }
+        }
+    }
+    vector<double>oop_prob,ip_prob;
+    vector<ACTION>history_actions;
+    ps.reset(big_blinds,public_cards);
+    static bool FLAG[HANDS_NUMBER],VV[CARD_NUMBER];
+    int cnt=0;
+    for(int i=0;i<CARD_NUMBER;i++)VV[i]=false;
+    for(Card cd:public_cards)VV[cd.index]=true;
+    for(int i=0;i<HANDS_NUMBER;i++)if(VV[index1[i]]||VV[index2[i]])FLAG[i]=false;else FLAG[i]=true,cnt++;
+    oop_prob.resize(HANDS_NUMBER,0.0);
+    ip_prob.resize(HANDS_NUMBER,0.0);
+    vector<int>hand_id;
+    for(int i=0;i<HANDS_NUMBER;i++)if(FLAG[i]){
+        oop_prob[i]=1.0/cnt,ip_prob[i]=1.0/cnt;
+        hand_id.push_back(i);
+    }
+    for(int i=0;i<(int)hand_id.size();i++)
+        for(int j=0;j<(int)hand_id.size();j++)
+            compare_ans[i][j]=compare(hand_id[i],hand_id[j],public_cards);
+    double value1=call_value(1,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,1);
+    double value2=call_value(1,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,1,0);
+    return value1-value2;
+}
+double AI_vs_AI(int a1,int a2,double big_blinds){
+    get_hand_id();
+    vector<vector<double>>policy;
+    vector<ACTION>actions;
+    PS ps;
+    vector<Card>public_cards;
+    for(int i=0;i<43;i++){
+        while(true){
+            int x=rand()%CARD_NUMBER;
+            Card cd(x);
+            bool flag=true;
+            for(Card p:public_cards)if(cd==p){
+                flag=false;
+                break;
+            }
+            if(flag){
+                public_cards.push_back(cd);
+                break;
+            }
+        }
+    }
+    vector<double>oop_prob_0,oop_prob_1,ip_prob_0,ip_prob_1;
+    vector<ACTION>history_actions;
+    ps.reset(big_blinds,public_cards);
+    static bool FLAG[HANDS_NUMBER],VV[CARD_NUMBER];
+    int cnt=0;
+    for(int i=0;i<CARD_NUMBER;i++)VV[i]=false;
+    for(Card cd:public_cards)VV[cd.index]=true;
+    for(int i=0;i<HANDS_NUMBER;i++)if(VV[index1[i]]||VV[index2[i]])FLAG[i]=false;else FLAG[i]=true,cnt++;
+    oop_prob_0.resize(HANDS_NUMBER,0.0);
+    oop_prob_1.resize(HANDS_NUMBER,0.0);
+    ip_prob_0.resize(HANDS_NUMBER,0.0);
+    ip_prob_1.resize(HANDS_NUMBER,0.0);
+    vector<int>hand_id;
+    for(int i=0;i<HANDS_NUMBER;i++)if(FLAG[i]){
+        oop_prob_0[i]=1.0/cnt;
+        oop_prob_1[i]=1.0/cnt;
+        ip_prob_0[i]=1.0/cnt;
+        ip_prob_1[i]=1.0/cnt;
+        hand_id.push_back(i);
+    }
+}
+double get_explo(int a1,int a2,double big_blinds){
+    get_hand_id();
+    PS ps;
+    vector<Card>public_cards;
+    for(int i=0;i<43;i++){
+        while(true){
+            int x=rand()%CARD_NUMBER;
+            Card cd(x);
+            bool flag=true;
+            for(Card p:public_cards)if(cd==p){
+                flag=false;
+                break;
+            }
+            if(flag){
+                public_cards.push_back(cd);
+                break;
+            }
+        }
+    }
+    vector<double>oop_prob,ip_prob;
+    vector<ACTION>history_actions;
+    ps.reset(big_blinds,public_cards);
+    static bool FLAG[HANDS_NUMBER],VV[CARD_NUMBER];
+    int cnt=0;
+    for(int i=0;i<CARD_NUMBER;i++)VV[i]=false;
+    for(Card cd:public_cards)VV[cd.index]=true;
+    for(int i=0;i<HANDS_NUMBER;i++)if(VV[index1[i]]||VV[index2[i]])FLAG[i]=false;else FLAG[i]=true,cnt++;
+    oop_prob.resize(HANDS_NUMBER,0.0);
+    ip_prob.resize(HANDS_NUMBER,0.0);
+    vector<int>hand_id;
+    for(int i=0;i<HANDS_NUMBER;i++)if(FLAG[i]){
+        oop_prob[i]=1.0/cnt,ip_prob[i]=1.0/cnt;
+        hand_id.push_back(i);
+    }
+    for(int i=0;i<(int)hand_id.size();i++)
+        for(int j=0;j<(int)hand_id.size();j++)
+            compare_ans[i][j]=compare(hand_id[i],hand_id[j],public_cards);
+    return call_value(1,-1,history_actions,public_cards,big_blinds,oop_prob,ip_prob,a2,a1);
+}
+double test_abstractions(int num=100){
+    double x=0.0;
+    pre_setting(0);
+    for(int i=0;i<num;i++){
+        x+=get_value(randvalue(10.0,100.0));
+    }
+    return x;
+}
+double test_exploitability(int abstraction1,int abstraction2,int num=100){//abstraction1 be explited  abstraction 2 exploer
+    double x=0.0;
+    pre_setting(0);
+    for(int i=0;i<num;i++){
+        x+=get_explo(abstraction1,abstraction2,randvalue(10.0,100.0));
+    }
+    return x;
 }
 #endif
