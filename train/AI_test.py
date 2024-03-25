@@ -2,13 +2,12 @@ import torch
 import torchvision
 import torch.nn as nn
 import numpy as np
-from HAND_CRITIC import HAND_CRITIC
 import os
 from multiprocessing import Process
 import time
 
 def script(test_time, thread_id):
-    os.system("./../src/CFR_AI "+str(test_time)+" "+str(thread_id))
+    os.system("./../src/CFR -3 "+str(thread_id)+" 1 0 "+str(test_time))
 
 THREADS = 60
 test_time = 1000

@@ -2,13 +2,12 @@ import torch
 import torchvision
 import torch.nn as nn
 import numpy as np
-from HAND_CRITIC import HAND_CRITIC
 import os
 from multiprocessing import Process
 import time
 
-def script(test_time, thread_id):
-    os.system("./../src/CFR_explo "+str(test_time)+" "+str(thread_id))
+def script(test_time):
+    os.system("./../src/CFR -2 0 1 "+str(test_time))
 
 THREADS = 10
 test_time = 100
@@ -17,7 +16,7 @@ for epoch in range(10):
     print('epoch:',epoch)
     threads = []
     for i in range(THREADS):
-        threads.append(Process(target=script, args=(test_time,60+i,)))
+        threads.append(Process(target=script, args=(test_time,)))
         threads[i].start()
 
     for i in range(THREADS):
