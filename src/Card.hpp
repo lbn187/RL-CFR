@@ -200,4 +200,63 @@ void get_hand_id(){
         }
     }
 }
+vector<Card> dealt_cards(){
+    vector<Card>public_cards;
+    for(int i=0;i<43;i++){
+        while(true){
+            int x=rand()%CARD_NUMBER;
+            Card cd(x);
+            bool flag=true;
+            for(Card p:public_cards)if(cd==p){
+                flag=false;
+                break;
+            }
+            if(flag){
+                public_cards.push_back(cd);
+                break;
+            }
+        }
+    }
+    return public_cards;
+}
+double compare(int myhand,int oppohand,vector<Card>die_cards){
+    Card cd1(index1[myhand]),cd2(index2[myhand]),cd3(index1[oppohand]),cd4(index2[oppohand]);
+    die_cards.push_back(cd1);
+    die_cards.push_back(cd2);
+    die_cards.push_back(cd3);
+    die_cards.push_back(cd4);
+    static bool FLAG[HANDS_NUMBER],VV[CARD_NUMBER];
+    for(int i=0;i<CARD_NUMBER;i++)VV[i]=false;
+    for(Card cd:die_cards)VV[cd.index]=true;
+    vector<Card>public_cards;
+    for(int i=0;i<CARD_NUMBER;i++)if(!VV[i])public_cards.push_back(Card(i));
+    vector<Card>p1cards=public_cards;
+    vector<Card>p2cards=public_cards;
+    p1cards.push_back(cd1);
+    p1cards.push_back(cd2);
+    p2cards.push_back(cd3);
+    p2cards.push_back(cd4);
+    int rk1=get_rank_from_cards(p1cards);
+    int rk2=get_rank_from_cards(p2cards);
+    if(rk1<rk2)return 1.0;
+    if(rk1==rk2)return 0.0;
+    return -1.0;
+}
+void set_prob(vector<Card>public_cards,vector<double>&oop_prob,vector<double>&ip_prob,vector<int>&hand_id){
+    static bool FLAG[HANDS_NUMBER],VV[CARD_NUMBER];
+    int cnt=0;
+    for(int i=0;i<CARD_NUMBER;i++)VV[i]=false;
+    for(Card cd:public_cards)VV[cd.index]=true;
+    for(int i=0;i<HANDS_NUMBER;i++)if(VV[index1[i]]||VV[index2[i]])FLAG[i]=false;else FLAG[i]=true,cnt++;
+    oop_prob.resize(HANDS_NUMBER,0.0);
+    ip_prob.resize(HANDS_NUMBER,0.0);
+    hand_id.clear();
+    for(int i=0;i<HANDS_NUMBER;i++)if(FLAG[i]){
+        oop_prob[i]=1.0/cnt,ip_prob[i]=1.0/cnt;
+        hand_id.push_back(i);
+    }
+    for(int i=0;i<(int)hand_id.size();i++)
+        for(int j=0;j<(int)hand_id.size();j++)
+            compare_ans[i][j]=compare(hand_id[i],hand_id[j],public_cards);
+}
 #endif

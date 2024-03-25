@@ -2,22 +2,23 @@
 #define UTILS_H
 #include<bits/stdc++.h>
 #include<random>
+#define floord(n,d) floor(((double)(n))/((double)(d)))
 using namespace std;
 const int MAX_PUBLIC_CARDS=5;
 const int CARD_NUMBER=52;
 const int HANDS_NUMBER=1326;
 const int INFOSET_NUMBER=36;
 const double INF=1e18;
-const bool TRUST_ACTION_FLAG=false;
 const int ACTION_DIM=5;
 const int CUDA_NUMBER=6;
-const int VALUE_WARM_ITERATOR=20;//TODO
+const int VALUE_WARM_ITERATOR=20;
 const double EPS=1e-20;
 const double BIG_BLIND_V=0.01;
-const double DEFAULT_BIG_BLINDS=50;
+const double MIN_BIG_BLINDS=10;
+const double MAX_BIG_BLINDS=100;
 const double ACTION_NOISE=0.15;//TRAINING
 const bool HIDE_NEG_FLAG=true;//evaluation
-const int MAX_TREE_SZ=10000;
+const int MAX_TREE_SZ=40000;
 const int MIN_ITERATOR_NUMBER=100;
 const int MAX_ITERATOR_NUMBER=250;
 const int EVENT_LIMIT=10;
@@ -44,20 +45,16 @@ const int OOP_PLAYER=0;
 const int IP_PLAYER=1;
 const int CARD_INDEX_NUMBER=13;
 const int CARD_SUIT_NUMBER=4;
+const int DEFAULT_ABSTRACTION=0;
+const int RLCFR_ABSTRACTION=1;
+const int ACTION_FOLD=0;
+const int ACTION_CALL=1;
+const int ACTION_RAISE=2;
+const int ACTION_CHANCE=3;
 int THREAD_ID;
 int index1[HANDS_NUMBER],index2[HANDS_NUMBER],to_index[CARD_NUMBER][CARD_NUMBER];
 int start_id[HANDS_NUMBER];
 int compare_ans[INFOSET_NUMBER][INFOSET_NUMBER];
-struct buffer_info{
-    void *ptr;
-    ssize_t itemsize;
-    std::string format;
-    ssize_t ndim;
-    std::vector<ssize_t> shape;
-    std::vector<ssize_t> strides;
-};
-//vector<int>batch_ids;
-int thread_id;
 double randvalue(double minv, double maxv){
     int BASE=10000+rand()%9999;
     return minv+(maxv-minv)*(rand()%BASE)/(BASE-1);
@@ -88,8 +85,5 @@ bool normalization(vector<double>&v){
     sum_prob=1/sum_prob;
     for(int i=0;i<HANDS_NUMBER;i++)v[i]*=sum_prob;
     return true;
-}
-double ROUND(double x,int z){
-    return 1.0*(round(x*z))/z;
 }
 #endif

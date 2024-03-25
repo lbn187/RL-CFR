@@ -9,7 +9,7 @@ struct ACTION{
     ACTION(){}
     ACTION(int _type){
         type=_type;
-        if(type==2)raise_v=BIG_BLIND_V;else raise_v=.0;
+        if(type==ACTION_RAISE)raise_v=BIG_BLIND_V;else raise_v=.0;
         if(_type>3||_type<0){
             puts("TYPE ERROR");
         }
@@ -18,7 +18,7 @@ struct ACTION{
         type=_type;
         //raise_v=ROUND(v,ROUND_INDEX);
         raise_v=v;
-        if(_type==2&&raise_v<EPS){
+        if(_type==ACTION_RAISE&&raise_v<EPS){
             puts("ACTION ERROR");
         }
         if(_type>3||_type<0){
@@ -26,11 +26,11 @@ struct ACTION{
         }
     }
     ACTION(Card _cd){
-        type=3;
+        type=ACTION_CHANCE;
         cd={_cd};
     }
     ACTION(vector<Card> _cd){
-        type=3;
+        type=ACTION_CHANCE;
         cd=_cd;
     }
     ACTION &operator=(const ACTION &_action){
@@ -45,8 +45,8 @@ struct ACTION{
     }
     bool operator==(const ACTION &_action){
         if(type!=_action.type)return false;
-        if(type==2&&fabs(raise_v-_action.raise_v)>1e-7)return false;
-        if(type==3&&cd!=_action.cd)return false;
+        if(type==ACTION_RAISE&&fabs(raise_v-_action.raise_v)>1e-7)return false;
+        if(type==ACTION_CHANCE&&cd!=_action.cd)return false;
         return true;
     }
 };

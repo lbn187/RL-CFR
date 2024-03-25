@@ -9,6 +9,7 @@ struct PS{
     int stage,player,type;
     vector<double>events[STAGE_NUMBER];
     vector<ACTION>history_actions;
+    PS(){}
     vector<float> ps_vector(){
         vector<float>state;
         state.push_back((float)1.0*stage);
