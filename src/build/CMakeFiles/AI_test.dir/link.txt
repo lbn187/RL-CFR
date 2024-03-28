@@ -1,1 +1,0 @@
-/usr/bin/c++   -D_GLIBCXX_USE_CXX11_ABI=0  -rdynamic CMakeFiles/AI_test.dir/AI_test.cpp.o  -o AI_test 
