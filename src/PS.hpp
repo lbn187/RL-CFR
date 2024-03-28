@@ -19,10 +19,10 @@ struct PS{
         state.push_back((float)maxraise);
         vector<float>card_index(CARD_INDEX_NUMBER, .0);
         vector<float>card_suit(CARD_SUIT_NUMBER ,.0);
-        for(Card cd:public_cards){//L4
+        for(Card cd:public_cards){
             card_index[cd.number()]+=1.0;
             card_suit[cd.suit()]+=1.0;
-        }//R4
+        }
         for(int i=0;i<CARD_INDEX_NUMBER;i++)state.push_back(card_index[i]);
         for(int i=0;i<CARD_SUIT_NUMBER;i++)state.push_back(card_suit[i]);
         for(int stg=0;stg<STAGE_NUMBER;stg++){
@@ -54,11 +54,11 @@ struct PS{
             type=PLAYER_PUBLIC_STATE;
         }else if(a.type==ACTION_TYPE_CALL){
             events[stage].push_back(0.0);
-            if(totalv>BIG_BLIND_V*1.7){//L7
+            if(totalv>BIG_BLIND_V*1.7){
                 type=SHOWDOWN_PUBLIC_STATE;
             }else{
                 type=PLAYER_PUBLIC_STATE;
-            }//R7
+            }
             totalv+=callv;
             callv=0.0;
         }else if(a.type==ACTION_TYPE_CHANCE){
@@ -91,10 +91,6 @@ struct PS{
         for(int i=0;i<STAGE_NUMBER;i++)events[i]=_ps.events[i];
         history_actions=_ps.history_actions;
         return *this;
-    }
-    void see(){
-        printf("%.12lf %.12lf %.12lf   STAGE%d PLAYER%d TYPE%d CARDS%d\n",totalv,callv,maxraise,stage,player,type,(int)public_cards.size());
-        printf("PUBLIC CARDS:");for(Card cd:public_cards)cd.output();puts("");
     }
     ACTION get_final_action(){
         if((int)history_actions.size()>0)return history_actions.back();

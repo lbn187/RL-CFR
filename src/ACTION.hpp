@@ -16,7 +16,6 @@ struct ACTION{
     }
     ACTION(int _type, double v){
         type=_type;
-        //raise_v=ROUND(v,ROUND_INDEX);
         raise_v=v;
         if(_type==ACTION_RAISE&&raise_v<EPS){
             puts("ACTION ERROR");

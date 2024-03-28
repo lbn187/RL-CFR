@@ -43,16 +43,6 @@ class CriticNetwork(nn.Module):
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
         self.to(device)
     
-    '''
-    def forward(self, state, action):
-        x = torch.cat([state, action], dim=-1)
-        Leaky_ReLU = torch.nn.LeakyReLU(negative_slope=5e-2)
-        x = Leaky_ReLU(self.ln1(self.fc1(x)))
-        x = Leaky_ReLU(self.ln2(self.fc2(x)))
-        q = self.q(x)
-        return q
-    '''
-
     def forward(self, state):
         x = state
         Leaky_ReLU = torch.nn.LeakyReLU(negative_slope=5e-2)
@@ -132,8 +122,6 @@ class TD3:
         state = torch.tensor([observation], dtype=torch.float).to(device)
         action = self.actor.forward(state)
         if train:
-            # exploration noise
-            #noise = torch.tensor(np.random.normal(loc=0.0, scale=self.action_noise*(state[:,6].cpu()+state[:,7].cpu())/(state[:,6].cpu()+state[:,7].cpu()+state[:,9].cpu()), size=3), dtype=torch.float).to(device)
             noise = torch.tensor(np.random.normal(loc=0.0, scale=self.action_noise, size=3), dtype=torch.float).to(device)
             action = torch.clamp(action+noise, -1, 1)
         self.actor.train()

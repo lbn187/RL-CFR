@@ -13,6 +13,7 @@
 #include<ATen/ATen.h>
 #include <cuda_runtime_api.h>
 torch::jit::script::Module actor_module;
+torch::jit::script::Module critic_module;
 vector<vector<float>>rl_state_data,rl_action_data;
 vector<float>rl_value_data;
 vector<float>choose_actions;
@@ -41,8 +42,9 @@ vector<double> get_action(vector<float>state,double noise=0.0){
     }
     return actions;
 }
-vector<double> get_target_action(vector<float>state,double noise=0.0){
+vector<double> get_target_action(vector<float>state,double maxraise,double noise=0.0){
     default_random_engine generator;
+    vector<float>state2=state;
     normal_distribution<float>distribution(0.0,noise);
     torch::DeviceType device=at::kCUDA;
     torch::Tensor state_tensor=at::from_blob(state.data(),{1,EVENT_DIM},at::TensorOptions().dtype(at::kFloat));
@@ -55,15 +57,25 @@ vector<double> get_target_action(vector<float>state,double noise=0.0){
     for(int i=0;i<ACTION_DIM;i++){
         float x=v[i*2],y=v[i*2+1];
         if(noise>0.000001)x=x+distribution(generator),y=y+distribution(generator);
+        state2.push_back(x);
+        state2.push_back(y);
         x=min(max(x,(float)-1.0),(float)1.0);
         y=min(max(y,(float)-1.0),(float)1.0);
         if(y<0)continue;
         actions.push_back(x);
     }
+    if(HIDE_NEG_FLAG){
+        torch::Tensor state_tensor2=at::from_blob(state2.data(),{1,EVENT_DIM+ACTION_DIM*2},at::TensorOptions().dtype(at::kFloat));
+        std::vector<torch::jit::IValue>inputs2;
+        inputs2.push_back(state_tensor2.to(device));
+        at::Tensor output;
+        output=critic_module.forward(inputs2).toTensor().to(at::kCPU);
+        vector<float> v2(output.data_ptr<float>(),output.data_ptr<float>()+output.numel());
+        if(v2[0]<0)return {-INF};
+    }
     return actions;
 }
-//0 BASIC with noise 1 BASIC     2   RL ACTION      3 ALL RL ACTION   4 root DEFAULT else actions
-double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vector<Card>public_cards,double BIG_BLINDS,vector<double>&oop_prob,vector<double>&ip_prob,int oop_action_abstraction,int ip_action_abstraction,int root_hand_id=-1
+double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vector<Card>public_cards,double BIG_BLINDS,vector<double>&oop_prob,vector<double>&ip_prob,int oop_action_abstraction,int ip_action_abstraction,int root_oop_hand_id=-1,int root_ip_hand_id=-1
 ){
     PS ps;
     ps.reset(BIG_BLINDS,public_cards);
@@ -92,18 +104,28 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
                         for(double scale:root_actions)
                             if(potv*0.5<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
                     }else{
-                        vector<double>raise_actions=get_target_action(node.ps.ps_vector());
-                        for(double scale:raise_actions)
-                            if(potv*0.5<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                        vector<double>raise_actions=get_target_action(node.ps.ps_vector(),ps.maxraise);
+                        if((int)raise_actions.size()==1&&raise_actions[0]<-1e5){
+                            for(double scale:DEFAULT_SCALE)
+                                if(potv*scale<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*scale));
+                        }else{
+                            for(double scale:raise_actions)
+                                if(potv*0.5<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                        }
                     }
                 }else if(lx==4){
                     if(h==root_id){
                         for(double scale:DEFAULT_SCALE)
                             if(potv*scale<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*scale));
                     }else{
-                        vector<double>raise_actions=get_target_action(node.ps.ps_vector());
-                        for(double scale:raise_actions)
-                            if(potv*0.5<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                        vector<double>raise_actions=get_target_action(node.ps.ps_vector(),ps.maxraise);
+                        if((int)raise_actions.size()==1&&raise_actions[0]<-1e5){
+                            for(double scale:DEFAULT_SCALE)
+                                if(potv*scale<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*scale));
+                        }else{
+                            for(double scale:raise_actions)
+                                if(potv*0.5<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                        }
                     }
                 }else if(lx==1){
                     if(node.ps.player==OOP_PLAYER){
@@ -111,18 +133,28 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
                             for(double scale:DEFAULT_SCALE)
                                 if(potv*scale<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*scale));
                         }else{
-                            vector<double>raise_actions=get_target_action(node.ps.ps_vector());
-                            for(double scale:raise_actions)
-                                if(potv*0.5<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                            vector<double>raise_actions=get_target_action(node.ps.ps_vector(),ps.maxraise);
+                            if((int)raise_actions.size()==1&&raise_actions[0]<-1e5){
+                                for(double scale:DEFAULT_SCALE)
+                                    if(potv*scale<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*scale));
+                            }else{
+                                for(double scale:raise_actions)
+                                    if(potv*0.5<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                            }
                         }
                     }else{
                         if(ip_action_abstraction==DEFAULT_ABSTRACTION){
                             for(double scale:DEFAULT_SCALE)
                                 if(potv*scale<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*scale));
                         }else{
-                            vector<double>raise_actions=get_target_action(node.ps.ps_vector());
-                            for(double scale:raise_actions)
-                                if(potv*0.5<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                            vector<double>raise_actions=get_target_action(node.ps.ps_vector(),ps.maxraise);
+                            if((int)raise_actions.size()==1&&raise_actions[0]<-1e5){
+                                for(double scale:DEFAULT_SCALE)
+                                    if(potv*scale<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*scale));
+                            }else{
+                                for(double scale:raise_actions)
+                                    if(potv*0.5<maxraise)actions.push_back(ACTION(ACTION_RAISE,potv*0.5+((scale+1.0)/2.0)*(maxraise-potv*0.5)));
+                            }
                         }
                     }
                 }
@@ -248,8 +280,15 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
             average_hand_prob[1-player][node][i]=hand_prob[1-player][tree[node].fa][i];
         }
     }
+    double value=0.0;
+    for(int i=0;i<hand_cnt;i++){
+        if(tree[root_id].ps.player==0)value+=average_value[0][root_id][i]*oop_prob[handid[i]];
+        else value+=average_value[1][root_id][i]*ip_prob[handid[i]];
+    }
     if(update_next_flag==100){
-        if(root_hand_id==-1)cerr<<"HAND ID UNDEFINE ERROR"<<endl;
+        int root_hand_id;
+        if(tree[root_id].ps.player==0)root_hand_id=root_oop_hand_id;else root_hand_id=root_ip_hand_id;
+        if(root_hand_id==-1)cerr<<"ROOT HAND ID ERROR"<<endl;
         double x=randvalue(0.0,1.0),y=0.0;
         int nxt_id=tree[root_id].child_end;
         for(int node=tree[root_id].child_begin;node<=tree[root_id].child_end;node++){
@@ -260,20 +299,20 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
             }
         }
         history_actions.push_back(tree[nxt_id].final_action);
-        double cfv=average_value[tree[root_id].ps.player][root_id][root_hand_id];
-        int r1=index1[handid[root_hand_id]],r2=index2[handid[root_hand_id]];
-        double other_prob=0.0;
-        for(int i=0;i<hand_cnt;i++){
-            int i1=index1[handid[i]],i2=index2[handid[i]];
-            if(i1!=r1&&i1!=r2&&i2!=r1&&i2!=r2)other_prob+=average_hand_prob[1-tree[root_id].ps.player][root_id][i];
+        double oop_cfv,ip_cfv,exv=0.0;
+        if(tree[root_id].ps.player==0)oop_cfv=value,ip_cfv=-value;else oop_cfv=-value,ip_cfv=value;
+        for(int pl=0;pl<2;pl++){
+            double cfv=average_value[pl][root_id][pl==0?root_oop_hand_id:root_ip_hand_id],other_prob=0.0,tmp;
+            int r1=index1[handid[pl==0?root_oop_hand_id:root_ip_hand_id]],r2=index2[handid[pl==0?root_oop_hand_id:root_ip_hand_id]];
+            for(int i=0;i<hand_cnt;i++){
+                int i1=index1[handid[i]],i2=index2[handid[i]];
+                if(i1!=r1&&i1!=r2&&i2!=r1&&i2!=r2)other_prob+=average_hand_prob[1-pl][root_id][i];
+            }
+            if(other_prob<EPS)return INF;
+            if(pl==0)tmp=(cfv-oop_cfv)/other_prob;else tmp=(cfv-ip_cfv)/other_prob;
+            if(pl==tree[root_id].ps.player)exv+=tmp;else exv-=tmp;
         }
-        if(other_prob<EPS)return INF;
-        return cfv/other_prob;
-    }
-    double value=0.0;
-    for(int i=0;i<hand_cnt;i++){
-        if(tree[root_id].ps.player==0)value+=average_value[0][root_id][i]*oop_prob[handid[i]];
-        else value+=average_value[1][root_id][i]*ip_prob[handid[i]];
+        return exv;
     }
     if(update_next_flag>0){
         vector<double>probs;double sum_prob=0.0;vector<int>ton;
@@ -316,9 +355,8 @@ double call_value(int lx,int update_next_flag,vector<ACTION>&history_actions,vec
         for(int node=0;node<TREE_SZ;node++){
             for(int i=0;i<INFOSET_NUMBER;i++){
                 hand_value[0][node][i]=hand_value[1][node][i]=0;
-                if(tree[node].ps.player==explo_player){
+                if(tree[node].ps.player==explo_player)
                     best_child[node][i]=-1;
-                }
             }
             if(tree[node].ps.type==FOLD_PUBLIC_STATE){
                 int pl=explo_player;
@@ -413,6 +451,15 @@ void pre_setting(int thread_id){
     catch(const c10::Error& e){
         cerr<<"ACTOR  MODULE LOAD ERROR"<<endl;
     }
+    if(HIDE_NEG_FLAG){
+        try{
+            critic_module=torch::jit::load(critic_dir+"critic.pt",torch::Device(torch::DeviceType::CUDA,gpu_id));
+            critic_module.to(device);
+        }
+        catch(const c10::Error& e){
+            cerr<<"ACTOR  MODULE LOAD ERROR"<<endl;
+        }
+    }
     srand(time(0)+thread_id*3333);
     get_hand_id();
 }
@@ -424,8 +471,8 @@ double get_value(double big_blinds){
     vector<ACTION>history_actions;
     ps.reset(big_blinds,public_cards);
     set_prob(public_cards,oop_prob,ip_prob,hand_id);
-    double value1=call_value(1,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,1);
-    double value2=call_value(1,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,1,0);
+    double value1=call_value(1,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,1,0);
+    double value2=call_value(1,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,1,1);
     return value1-value2;
 }
 pair<double,double> AI_vs_AI(int oop_ai,int ip_ai,int hand_id_oop,int hand_id_ip,double big_blinds){
@@ -436,28 +483,15 @@ pair<double,double> AI_vs_AI(int oop_ai,int ip_ai,int hand_id_oop,int hand_id_ip
     PS ps;
     ps.reset(big_blinds,public_cards);
     set_prob(public_cards,oop_prob,ip_prob,hand_id);
-    double exv,sum=0.0;
-    if(ip_ai==1)exv=call_value(3,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,hand_id_ip);
-    else exv=call_value(1,0,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,hand_id_ip);
+    double exv=0.0;
+    exv=call_value(1,100,history_actions,public_cards,big_blinds,oop_prob,ip_prob,1,1,hand_id_oop,hand_id_ip);
+    if(exv>1e10)exv=0.0;
+    history_actions.clear();
+    ps.reset(big_blinds,public_cards);
     while(ps.type==PLAYER_PUBLIC_STATE){
-        double new_exv;
-        choose_actions.clear();
-        root_actions=get_action(ps.ps_vector(),ACTION_NOISE);
-        if(ps.player==OOP_PLAYER){
-            if(oop_ai==1)new_exv=call_value(3,100,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,hand_id_oop);
-            else new_exv=call_value(1,100,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,hand_id_oop);
-        }else{
-            if(ip_ai==1)new_exv=call_value(3,100,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,hand_id_ip);
-            else new_exv=call_value(1,100,history_actions,public_cards,big_blinds,oop_prob,ip_prob,0,0,hand_id_ip);
-        }
-        if(new_exv<1e10){
-            if(ps.player==0)new_exv=-new_exv;
-            sum+=(exv-new_exv)*(exv-new_exv);
-            exv=new_exv;
-        }
+        if(ps.player==OOP_PLAYER)call_value(1,100,history_actions,public_cards,big_blinds,oop_prob,ip_prob,oop_ai,oop_ai,hand_id_oop,hand_id_ip);
+        else call_value(1,100,history_actions,public_cards,big_blinds,oop_prob,ip_prob,ip_ai,ip_ai,hand_id_oop,hand_id_ip);
         ps.trans(history_actions.back());
-        printf("%d %.12lf\n",history_actions.back().type,history_actions.back().raise_v);
-        
     }
     double truev;
     if(ps.type==FOLD_PUBLIC_STATE){
@@ -466,8 +500,7 @@ pair<double,double> AI_vs_AI(int oop_ai,int ip_ai,int hand_id_oop,int hand_id_ip
     if(ps.type==SHOWDOWN_PUBLIC_STATE){
         truev=-ps.totalv/2*compare_ans[hand_id_oop][hand_id_ip];
     }else cerr<<"PS FINAL TYPE ERROR"<<endl;
-    sum+=(truev-exv)*(truev-exv);
-    return make_pair(truev,sum);//return ip_value
+    return make_pair(truev-exv,(truev-exv)*(truev-exv));
 }
 double get_explo(int a1,int a2,double big_blinds){
     PS ps;
@@ -508,7 +541,7 @@ double test_abstractions(int num=100){
         x+=get_value(randvalue(MIN_BIG_BLINDS,MAX_BIG_BLINDS));
     return x;
 }
-double test_exploitability(int abstraction1,int abstraction2,int num=100){//abstraction1 be explited  abstraction 2 exploer
+double test_exploitability(int abstraction1,int abstraction2,int num=100){//abstraction1 be exploited
     double x=0.0;
     pre_setting(0);
     for(int i=0;i<num;i++)

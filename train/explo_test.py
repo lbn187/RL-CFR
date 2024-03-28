@@ -7,7 +7,7 @@ from multiprocessing import Process
 import time
 
 def script(test_time):
-    os.system("./../src/CFR -2 0 1 "+str(test_time))
+    os.system("./../src/build/CFR -2 0 1 "+str(test_time))
 
 THREADS = 10
 test_time = 100
