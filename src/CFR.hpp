@@ -489,8 +489,9 @@ pair<double,double> AI_vs_AI(int oop_ai,int ip_ai,int hand_id_oop,int hand_id_ip
     history_actions.clear();
     ps.reset(big_blinds,public_cards);
     while(ps.type==PLAYER_PUBLIC_STATE){
-        if(ps.player==OOP_PLAYER)call_value(1,100,history_actions,public_cards,big_blinds,oop_prob,ip_prob,oop_ai,oop_ai,hand_id_oop,hand_id_ip);
-        else call_value(1,100,history_actions,public_cards,big_blinds,oop_prob,ip_prob,ip_ai,ip_ai,hand_id_oop,hand_id_ip);
+        call_value(1,100,history_actions,public_cards,big_blinds,oop_prob,ip_prob,oop_ai,ip_ai,hand_id_oop,hand_id_ip);
+        //if(ps.player==OOP_PLAYER)call_value(1,100,history_actions,public_cards,big_blinds,oop_prob,ip_prob,oop_ai,oop_ai,hand_id_oop,hand_id_ip);
+        //else call_value(1,100,history_actions,public_cards,big_blinds,oop_prob,ip_prob,ip_ai,ip_ai,hand_id_oop,hand_id_ip);
         ps.trans(history_actions.back());
     }
     double truev;
