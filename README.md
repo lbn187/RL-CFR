@@ -6,7 +6,7 @@ This repository is the implementation of RL-CFR in ICML 2024. Please refer to th
 
 If you used this code in your research or found it helpful, please consider citing our paper:
 
-‘’‘
+
 @inproceedings{
 icml2024rlcfr,
 title={{RL}-{CFR}: Improving Action Abstraction for Imperfect Information Extensive-Form Games with Reinforcement Learning},
@@ -15,7 +15,7 @@ booktitle={Forty-first International Conference on Machine Learning},
 year={2024},
 url={https://openreview.net/forum?id=pA2Q5Wfspp}
 }
-’‘’
+
 
 ## Requirements
 
