@@ -1,4 +1,4 @@
-# [ICML2024]RL-CFR: Improving Action Abstraction for Imperfect Information Extensive-Form Games with Reinforcement Learning
+# RL-CFR: Improving Action Abstraction for Imperfect Information Extensive-Form Games with Reinforcement Learning
 
 This repository is the implementation of PREFLOP43 poker solver using RL-CFR in ICML 2024. Please refer to that repo for more documentation.
 
@@ -17,6 +17,9 @@ url={https://openreview.net/forum?id=pA2Q5Wfspp}
 }
 ```
 
+## Contact Details
+
+If you have any questions or suggestions about our work, please contact me at li-bn22@mails.tsinghua.edu.cn
 
 ## Requirements
 
